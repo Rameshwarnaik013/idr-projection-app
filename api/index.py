@@ -69,6 +69,7 @@ def process_files(this_month_file, last_month_file):
         idr_rows.append(idr_row)
 
     df_idr = pd.DataFrame(idr_rows, columns=IDR_COLUMNS)
+    df_idr = df_idr[df_idr['Origin'] == 'Indore'].reset_index(drop=True)
 
     pivot_source = df_idr.groupby('Packaging Method').agg(
         **{'Projected Units': ('Projection Units', 'sum'),
