@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IDR Projection Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; color: #333; }
+        .header { background: linear-gradient(135deg, #2F5496, #1a3a6e); color: white; padding: 20px 40px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+        .header h1 { font-size: 24px; font-weight: 600; }
+        .header .subtitle { font-size: 13px; opacity: 0.8; margin-top: 4px; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+        .upload-section { background: white; border-radius: 12px; padding: 32px; margin-bottom: 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+        .upload-section h2 { color: #2F5496; margin-bottom: 20px; font-size: 20px; }
+        .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+        .upload-box { border: 2px dashed #c0c8d4; border-radius: 10px; padding: 24px; text-align: center; transition: all 0.3s; cursor: pointer; position: relative; }
+        .upload-box:hover, .upload-box.dragover { border-color: #2F5496; background: #f0f4fa; }
+        .upload-box.has-file { border-color: #27ae60; background: #f0faf4; }
+        .upload-box label { display: block; cursor: pointer; font-weight: 600; color: #555; margin-bottom: 8px; }
+        .upload-box .icon { font-size: 36px; margin-bottom: 8px; }
+        .upload-box .filename { font-size: 13px; color: #27ae60; margin-top: 6px; font-weight: 600; }
+        .upload-box input[type="file"] { display: none; }
+        .upload-box p { font-size: 12px; color: #999; }
+
+        .btn { padding: 12px 32px; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .btn-primary { background: #2F5496; color: white; }
+        .btn-primary:hover { background: #1a3a6e; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(47,84,150,0.3); }
+        .btn-primary:disabled { background: #a0b4cc; cursor: not-allowed; transform: none; box-shadow: none; }
+        .btn-success { background: #27ae60; color: white; }
+        .btn-success:hover { background: #1e8449; }
+        .btn-row { display: flex; gap: 12px; align-items: center; }
+
+        .loading { display: none; align-items: center; gap: 10px; color: #2F5496; }
+        .loading.active { display: flex; }
+        .spinner { width: 24px; height: 24px; border: 3px solid #e0e0e0; border-top: 3px solid #2F5496; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .dashboard { display: none; }
+        .dashboard.active { display: block; }
+
+        .kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 24px; }
+        .kpi-card { background: white; border-radius: 10px; padding: 20px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-top: 4px solid #2F5496; }
+        .kpi-card .value { font-size: 28px; font-weight: 700; color: #2F5496; margin: 8px 0; }
+        .kpi-card .label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+        .chart-card { background: white; border-radius: 10px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .chart-card h3 { color: #2F5496; margin-bottom: 16px; font-size: 16px; }
+        .chart-card canvas { max-height: 300px; }
+
+        .table-section { background: white; border-radius: 10px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 24px; }
+        .table-section h3 { color: #2F5496; margin-bottom: 16px; font-size: 16px; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .data-table th { background: #2F5496; color: white; padding: 10px 12px; text-align: left; font-weight: 600; position: sticky; top: 0; }
+        .data-table td { padding: 8px 12px; border-bottom: 1px solid #eee; }
+        .data-table tr:hover td { background: #f5f8fc; }
+        .table-scroll { max-height: 400px; overflow-y: auto; border-radius: 8px; border: 1px solid #e0e0e0; }
+
+        .tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+        .tab { padding: 10px 20px; border: none; background: #e8ecf0; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: 600; color: #666; transition: all 0.2s; }
+        .tab.active { background: #2F5496; color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .download-bar { background: white; border-radius: 10px; padding: 20px 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; }
+        .download-bar .info { font-size: 14px; color: #555; }
+        .download-bar .info strong { color: #2F5496; }
+
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .badge-blue { background: #e8f0fe; color: #2F5496; }
+        .badge-green { background: #e8f8f0; color: #27ae60; }
+
+        @media (max-width: 900px) {
+            .kpi-row { grid-template-columns: repeat(2, 1fr); }
+            .charts-grid, .upload-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>IDR Projection Tool</h1>
+            <div class="subtitle">Upload projection files to generate IDR Projection & Pivot analysis</div>
+        </div>
+        <div id="downloadBtnHeader" style="display:none;">
+            <button class="btn btn-success" onclick="downloadFile()">Download Output Excel</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="upload-section">
+            <h2>Upload Files</h2>
+            <form id="uploadForm" enctype="multipart/form-data">
+                <div class="upload-grid">
+                    <div class="upload-box" id="box1" onclick="document.getElementById('thisMonth').click()"
+                         ondrop="handleDrop(event,'thisMonth')" ondragover="handleDragOver(event,'box1')" ondragleave="handleDragLeave(event,'box1')">
+                        <div class="icon">📊</div>
+                        <label>Projection This Month</label>
+                        <p>Drop Excel file here or click to browse</p>
+                        <input type="file" id="thisMonth" name="this_month" accept=".xlsx,.xls" onchange="fileSelected(this,'box1')">
+                        <div class="filename" id="file1Name"></div>
+                    </div>
+                    <div class="upload-box" id="box2" onclick="document.getElementById('lastMonth').click()"
+                         ondrop="handleDrop(event,'lastMonth')" ondragover="handleDragOver(event,'box2')" ondragleave="handleDragLeave(event,'box2')">
+                        <div class="icon">📁</div>
+                        <label>Projections Last Month</label>
+                        <p>Drop Excel file here or click to browse</p>
+                        <input type="file" id="lastMonth" name="last_month" accept=".xlsx,.xls" onchange="fileSelected(this,'box2')">
+                        <div class="filename" id="file2Name"></div>
+                    </div>
+                </div>
+                <div class="btn-row">
+                    <button type="submit" class="btn btn-primary" id="processBtn" disabled>Process Files</button>
+                    <div class="loading" id="loadingIndicator">
+                        <div class="spinner"></div>
+                        <span>Processing files...</span>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="dashboard" id="dashboard">
+            <div class="download-bar">
+                <div class="info">
+                    Output file ready: <strong>IDR_Projection_Output.xlsx</strong>
+                    &nbsp; <span class="badge badge-blue" id="badgeItems"></span>
+                    &nbsp; <span class="badge badge-green" id="badgeMatch"></span>
+                </div>
+                <button class="btn btn-success" onclick="downloadFile()">Download Excel</button>
+            </div>
+
+            <div class="kpi-row">
+                <div class="kpi-card">
+                    <div class="label">Total Line Items</div>
+                    <div class="value" id="kpiItems">-</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="label">Total Projection Units</div>
+                    <div class="value" id="kpiUnits">-</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="label">Total KGs</div>
+                    <div class="value" id="kpiKgs">-</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="label">Unique Items</div>
+                    <div class="value" id="kpiUniqueItems">-</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="label">Unique Customers</div>
+                    <div class="value" id="kpiCustomers">-</div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3>Projection by Item Group (Top 15)</h3>
+                    <canvas id="chartItemGroup"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Projection by Customer Group</h3>
+                    <canvas id="chartCustomerGroup"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Packaging Method Distribution</h3>
+                    <canvas id="chartPackagingMethod"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Item Type Distribution</h3>
+                    <canvas id="chartItemType"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Top 10 Items by KGs</h3>
+                    <canvas id="chartTopItems"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Top KAMs by KGs</h3>
+                    <canvas id="chartKAM"></canvas>
+                </div>
+            </div>
+
+            <div class="table-section">
+                <div class="tabs">
+                    <button class="tab active" onclick="switchTab('idr')">IDR Projection Preview</button>
+                    <button class="tab" onclick="switchTab('pivotSrc')">Pivot - Source Summary</button>
+                    <button class="tab" onclick="switchTab('pivotFW')">Pivot - FW Breakdown</button>
+                    <button class="tab" onclick="switchTab('pivotVA')">Pivot - Value Added</button>
+                </div>
+                <div class="tab-content active" id="tab-idr">
+                    <div class="table-scroll" id="idrTableContainer"></div>
+                </div>
+                <div class="tab-content" id="tab-pivotSrc">
+                    <div class="table-scroll" id="pivotSrcContainer"></div>
+                </div>
+                <div class="tab-content" id="tab-pivotFW">
+                    <div class="table-scroll" id="pivotFWContainer"></div>
+                </div>
+                <div class="tab-content" id="tab-pivotVA">
+                    <div class="table-scroll" id="pivotVAContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+const charts = {};
+
+function fmt(n) { return n != null ? Number(n).toLocaleString('en-IN') : '-'; }
+function fmtKg(n) { return n != null ? Number(n).toLocaleString('en-IN', {maximumFractionDigits:2}) : '-'; }
+
+function fileSelected(input, boxId) {
+    const box = document.getElementById(boxId);
+    const nameEl = boxId === 'box1' ? document.getElementById('file1Name') : document.getElementById('file2Name');
+    if (input.files.length) {
+        box.classList.add('has-file');
+        nameEl.textContent = input.files[0].name;
+    }
+    checkReady();
+}
+
+function handleDragOver(e, boxId) { e.preventDefault(); document.getElementById(boxId).classList.add('dragover'); }
+function handleDragLeave(e, boxId) { e.preventDefault(); document.getElementById(boxId).classList.remove('dragover'); }
+function handleDrop(e, inputId) {
+    e.preventDefault();
+    const input = document.getElementById(inputId);
+    input.files = e.dataTransfer.files;
+    const boxId = inputId === 'thisMonth' ? 'box1' : 'box2';
+    document.getElementById(boxId).classList.remove('dragover');
+    fileSelected(input, boxId);
+}
+
+function checkReady() {
+    const f1 = document.getElementById('thisMonth').files.length > 0;
+    const f2 = document.getElementById('lastMonth').files.length > 0;
+    document.getElementById('processBtn').disabled = !(f1 && f2);
+}
+
+document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    document.getElementById('processBtn').disabled = true;
+    document.getElementById('loadingIndicator').classList.add('active');
+    document.getElementById('dashboard').classList.remove('active');
+
+    try {
+        const resp = await fetch('/process', { method: 'POST', body: formData });
+        const data = await resp.json();
+        if (resp.ok) {
+            renderDashboard(data);
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    } catch (err) {
+        alert('Network error: ' + err.message);
+    } finally {
+        document.getElementById('processBtn').disabled = false;
+        document.getElementById('loadingIndicator').classList.remove('active');
+    }
+});
+
+function renderDashboard(data) {
+    document.getElementById('dashboard').classList.add('active');
+    document.getElementById('downloadBtnHeader').style.display = 'block';
+
+    document.getElementById('kpiItems').textContent = fmt(data.total_items);
+    document.getElementById('kpiUnits').textContent = fmt(data.total_projection_units);
+    document.getElementById('kpiKgs').textContent = fmtKg(data.total_kgs);
+    document.getElementById('kpiUniqueItems').textContent = fmt(data.unique_items);
+    document.getElementById('kpiCustomers').textContent = fmt(data.unique_customers);
+    document.getElementById('badgeItems').textContent = data.total_items + ' rows';
+    document.getElementById('badgeMatch').textContent = data.pkg_match_rate + '% pkg match';
+
+    const colors = ['#2F5496','#27ae60','#e67e22','#e74c3c','#9b59b6','#1abc9c','#f1c40f','#34495e','#d35400','#2980b9','#8e44ad','#16a085','#c0392b','#7f8c8d','#2c3e50'];
+
+    function makeChart(id, type, labels, datasets, opts) {
+        if (charts[id]) charts[id].destroy();
+        const ctx = document.getElementById(id).getContext('2d');
+        charts[id] = new Chart(ctx, {
+            type, data: { labels, datasets },
+            options: { responsive: true, maintainAspectRatio: true, ...opts }
+        });
+    }
+
+    // Item Group bar chart
+    let ig = data.item_groups;
+    makeChart('chartItemGroup', 'bar',
+        Object.keys(ig),
+        [{ label: 'Count', data: Object.values(ig), backgroundColor: colors }],
+        { plugins: { legend: { display: false } }, scales: { x: { ticks: { maxRotation: 45, font: { size: 10 } } } } }
+    );
+
+    // Customer Group doughnut
+    let cg = data.customer_groups;
+    makeChart('chartCustomerGroup', 'doughnut',
+        Object.keys(cg),
+        [{ data: Object.values(cg), backgroundColor: colors }],
+        { plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } } }
+    );
+
+    // Packaging Method pie
+    let pm = data.packaging_methods;
+    makeChart('chartPackagingMethod', 'pie',
+        Object.keys(pm),
+        [{ data: Object.values(pm), backgroundColor: colors }],
+        { plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } } }
+    );
+
+    // Item Type doughnut
+    let it = data.item_types;
+    makeChart('chartItemType', 'doughnut',
+        Object.keys(it),
+        [{ data: Object.values(it), backgroundColor: colors }],
+        { plugins: { legend: { position: 'right' } } }
+    );
+
+    // Top items by KG
+    let ti = data.top_items_by_kg;
+    makeChart('chartTopItems', 'bar',
+        Object.keys(ti).map(k => k.length > 30 ? k.substring(0,30)+'...' : k),
+        [{ label: 'KGs', data: Object.values(ti), backgroundColor: '#2F5496' }],
+        { indexAxis: 'y', plugins: { legend: { display: false } } }
+    );
+
+    // KAM summary
+    let kam = data.kam_summary;
+    makeChart('chartKAM', 'bar',
+        Object.keys(kam).map(k => k.length > 20 ? k.substring(0,20)+'...' : k),
+        [{ label: 'KGs', data: Object.values(kam), backgroundColor: '#27ae60' }],
+        { indexAxis: 'y', plugins: { legend: { display: false } } }
+    );
+
+    // Tables
+    renderTable('idrTableContainer', data.idr_preview,
+        ['Item Group','Item Name','Item Parent','Conversion Factor','Projection Units','Total KGs','Packaging Type','Packaging Method','Item Type','Customer Group','Origin','Customer','Key Account Manager']);
+    renderTable('pivotSrcContainer', data.pivot_source, ['Source','Projected Units','Projected Kg']);
+    renderTable('pivotFWContainer', data.pivot_fw, ['Item Name','Projected Units','Projected Kg']);
+    renderTable('pivotVAContainer', data.pivot_va, ['Item Name','Projected Kg']);
+}
+
+function renderTable(containerId, rows, cols) {
+    if (!rows || !rows.length) {
+        document.getElementById(containerId).innerHTML = '<p style="padding:20px;color:#999;">No data available</p>';
+        return;
+    }
+    let html = '<table class="data-table"><thead><tr>';
+    cols.forEach(c => html += '<th>' + c + '</th>');
+    html += '</tr></thead><tbody>';
+    rows.forEach(r => {
+        html += '<tr>';
+        cols.forEach(c => {
+            let v = r[c];
+            if (v == null || v === 'nan' || v === 'NaN') v = '';
+            if (typeof v === 'number') v = v % 1 === 0 ? fmt(v) : fmtKg(v);
+            html += '<td>' + v + '</td>';
+        });
+        html += '</tr>';
+    });
+    html += '</tbody></table>';
+    document.getElementById(containerId).innerHTML = html;
+}
+
+function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('tab-' + tab).classList.add('active');
+}
+
+function downloadFile() {
+    window.location.href = '/download';
+}
+</script>
+</body>
+</html>
