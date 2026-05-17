@@ -6,382 +6,376 @@
     <title>IDR Projection Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; color: #333; }
-        .header { background: linear-gradient(135deg, #2F5496, #1a3a6e); color: white; padding: 20px 40px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
-        .header h1 { font-size: 24px; font-weight: 600; }
-        .header .subtitle { font-size: 13px; opacity: 0.8; margin-top: 4px; }
-        .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
-
-        .upload-section { background: white; border-radius: 12px; padding: 32px; margin-bottom: 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
-        .upload-section h2 { color: #2F5496; margin-bottom: 20px; font-size: 20px; }
-        .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 20px; }
-        .upload-box { border: 2px dashed #c0c8d4; border-radius: 10px; padding: 24px; text-align: center; transition: all 0.3s; cursor: pointer; }
-        .upload-box:hover, .upload-box.dragover { border-color: #2F5496; background: #f0f4fa; }
-        .upload-box.has-file { border-color: #27ae60; background: #f0faf4; }
-        .upload-box label { display: block; cursor: pointer; font-weight: 600; color: #555; margin-bottom: 8px; }
-        .upload-box .icon { font-size: 36px; margin-bottom: 8px; }
-        .upload-box .filename { font-size: 13px; color: #27ae60; margin-top: 6px; font-weight: 600; }
-        .upload-box input[type="file"] { display: none; }
-        .upload-box p { font-size: 12px; color: #999; }
-
-        .params-row { display: flex; gap: 24px; margin-bottom: 24px; align-items: flex-end; }
-        .param-group { display: flex; flex-direction: column; gap: 6px; }
-        .param-group label { font-size: 13px; font-weight: 600; color: #555; }
-        .param-group input { padding: 10px 14px; border: 2px solid #d0d5dd; border-radius: 8px; font-size: 15px; width: 140px; transition: border-color 0.2s; }
-        .param-group input:focus { outline: none; border-color: #2F5496; }
-
-        .btn { padding: 12px 32px; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
-        .btn-primary { background: #2F5496; color: white; }
-        .btn-primary:hover { background: #1a3a6e; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(47,84,150,0.3); }
-        .btn-primary:disabled { background: #a0b4cc; cursor: not-allowed; transform: none; box-shadow: none; }
-        .btn-success { background: #27ae60; color: white; }
-        .btn-success:hover { background: #1e8449; }
-        .btn-row { display: flex; gap: 12px; align-items: center; }
-
-        .loading { display: none; align-items: center; gap: 10px; color: #2F5496; }
-        .loading.active { display: flex; }
-        .spinner { width: 24px; height: 24px; border: 3px solid #e0e0e0; border-top: 3px solid #2F5496; border-radius: 50%; animation: spin 0.8s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        .dashboard { display: none; }
-        .dashboard.active { display: block; }
-
-        .kpi-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-bottom: 24px; }
-        .kpi-card { background: white; border-radius: 10px; padding: 18px 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-top: 4px solid #2F5496; }
-        .kpi-card .value { font-size: 24px; font-weight: 700; color: #2F5496; margin: 6px 0; }
-        .kpi-card .label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
-        .kpi-card.accent { border-top-color: #e67e22; }
-        .kpi-card.accent .value { color: #e67e22; }
-
-        .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
-        .chart-card { background: white; border-radius: 10px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-        .chart-card h3 { color: #2F5496; margin-bottom: 16px; font-size: 16px; }
-        .chart-card canvas { max-height: 300px; }
-
-        .table-section { background: white; border-radius: 10px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 24px; }
-        .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .data-table th { background: #2F5496; color: white; padding: 10px 12px; text-align: left; font-weight: 600; position: sticky; top: 0; }
-        .data-table td { padding: 8px 12px; border-bottom: 1px solid #eee; }
-        .data-table tr:hover td { background: #f5f8fc; }
-        .data-table .highlight { background: #FFFF00; }
-        .table-scroll { max-height: 400px; overflow-y: auto; border-radius: 8px; border: 1px solid #e0e0e0; }
-
-        .tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
-        .tab { padding: 10px 20px; border: none; background: #e8ecf0; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: 600; color: #666; transition: all 0.2s; font-size: 13px; }
-        .tab.active { background: #2F5496; color: white; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-
-        .download-bar { background: white; border-radius: 10px; padding: 20px 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; }
-        .download-bar .info { font-size: 14px; color: #555; }
-        .download-bar .info strong { color: #2F5496; }
-
-        .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
-        .badge-blue { background: #e8f0fe; color: #2F5496; }
-        .badge-green { background: #e8f8f0; color: #27ae60; }
-        .badge-orange { background: #fef3e8; color: #e67e22; }
-
-        @media (max-width: 900px) {
-            .kpi-row { grid-template-columns: repeat(2, 1fr); }
-            .charts-grid, .upload-grid { grid-template-columns: 1fr; }
-            .params-row { flex-wrap: wrap; }
-        }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f0f2f5;color:#333}
+        .header{background:linear-gradient(135deg,#2F5496,#1a3a6e);color:#fff;padding:20px 40px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+        .header h1{font-size:24px;font-weight:600}
+        .header .subtitle{font-size:13px;opacity:.8;margin-top:4px}
+        .container{max-width:1400px;margin:0 auto;padding:24px}
+        .upload-section{background:#fff;border-radius:12px;padding:32px;margin-bottom:24px;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+        .upload-section h2{color:#2F5496;margin-bottom:20px;font-size:20px}
+        .upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:20px}
+        .upload-box{border:2px dashed #c0c8d4;border-radius:10px;padding:24px;text-align:center;transition:.3s;cursor:pointer}
+        .upload-box:hover,.upload-box.dragover{border-color:#2F5496;background:#f0f4fa}
+        .upload-box.has-file{border-color:#27ae60;background:#f0faf4}
+        .upload-box label{display:block;cursor:pointer;font-weight:600;color:#555;margin-bottom:8px}
+        .upload-box .icon{font-size:36px;margin-bottom:8px}
+        .upload-box .filename{font-size:13px;color:#27ae60;margin-top:6px;font-weight:600}
+        .upload-box input[type=file]{display:none}
+        .upload-box p{font-size:12px;color:#999}
+        .params-row{display:flex;gap:24px;margin-bottom:24px;align-items:flex-end}
+        .param-group{display:flex;flex-direction:column;gap:6px}
+        .param-group label{font-size:13px;font-weight:600;color:#555}
+        .param-group input{padding:10px 14px;border:2px solid #d0d5dd;border-radius:8px;font-size:15px;width:140px}
+        .param-group input:focus{outline:none;border-color:#2F5496}
+        .btn{padding:12px 32px;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;transition:.3s}
+        .btn-primary{background:#2F5496;color:#fff}
+        .btn-primary:hover{background:#1a3a6e;transform:translateY(-1px);box-shadow:0 4px 12px rgba(47,84,150,.3)}
+        .btn-primary:disabled{background:#a0b4cc;cursor:not-allowed;transform:none;box-shadow:none}
+        .btn-success{background:#27ae60;color:#fff}
+        .btn-success:hover{background:#1e8449}
+        .btn-row{display:flex;gap:12px;align-items:center}
+        .loading{display:none;align-items:center;gap:10px;color:#2F5496}
+        .loading.active{display:flex}
+        .spinner{width:24px;height:24px;border:3px solid #e0e0e0;border-top:3px solid #2F5496;border-radius:50%;animation:spin .8s linear infinite}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .dashboard{display:none}
+        .dashboard.active{display:block}
+        .kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:24px}
+        .kpi-card{background:#fff;border-radius:10px;padding:18px 12px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.06);border-top:4px solid #2F5496}
+        .kpi-card .value{font-size:24px;font-weight:700;color:#2F5496;margin:6px 0}
+        .kpi-card .label{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.5px}
+        .kpi-card.accent{border-top-color:#e67e22}
+        .kpi-card.accent .value{color:#e67e22}
+        .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px}
+        .chart-card{background:#fff;border-radius:10px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+        .chart-card h3{color:#2F5496;margin-bottom:16px;font-size:16px}
+        .chart-card canvas{max-height:300px}
+        .table-section{background:#fff;border-radius:10px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.06);margin-bottom:24px}
+        .data-table{width:100%;border-collapse:collapse;font-size:13px}
+        .data-table th{background:#2F5496;color:#fff;padding:10px 12px;text-align:left;font-weight:600;position:sticky;top:0}
+        .data-table td{padding:8px 12px;border-bottom:1px solid #eee}
+        .data-table tr:hover td{background:#f5f8fc}
+        .data-table .hl{background:#FFFF00}
+        .data-table .bold{font-weight:700}
+        .table-scroll{max-height:450px;overflow-y:auto;border-radius:8px;border:1px solid #e0e0e0}
+        .tabs{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap}
+        .tab{padding:10px 16px;border:none;background:#e8ecf0;border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;color:#666;transition:.2s;font-size:12px}
+        .tab.active{background:#2F5496;color:#fff}
+        .tab-content{display:none}
+        .tab-content.active{display:block}
+        .download-bar{background:#fff;border-radius:10px;padding:20px 24px;box-shadow:0 2px 8px rgba(0,0,0,.06);margin-bottom:24px;display:flex;align-items:center;justify-content:space-between}
+        .download-bar .info{font-size:14px;color:#555}
+        .download-bar .info strong{color:#2F5496}
+        .badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600}
+        .badge-blue{background:#e8f0fe;color:#2F5496}
+        .badge-green{background:#e8f8f0;color:#27ae60}
+        .badge-orange{background:#fef3e8;color:#e67e22}
+        .approach-card{background:#fff;border-radius:10px;padding:28px;box-shadow:0 2px 8px rgba(0,0,0,.06);margin-bottom:24px;line-height:1.7}
+        .approach-card h3{color:#2F5496;margin-bottom:14px;font-size:18px;border-bottom:2px solid #2F5496;padding-bottom:8px}
+        .approach-card h4{color:#1a3a6e;margin:18px 0 8px;font-size:15px}
+        .approach-card ul{margin-left:20px;margin-bottom:12px}
+        .approach-card li{margin-bottom:4px;font-size:13px}
+        .approach-card code{background:#f0f4fa;padding:2px 6px;border-radius:4px;font-size:12px;color:#2F5496}
+        .approach-card .formula{background:#f8f9fa;border-left:4px solid #2F5496;padding:10px 16px;margin:8px 0;font-family:monospace;font-size:13px;border-radius:0 6px 6px 0}
+        .approach-card table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}
+        .approach-card table th{background:#2F5496;color:#fff;padding:8px 12px;text-align:left}
+        .approach-card table td{padding:6px 12px;border:1px solid #ddd}
+        @media(max-width:900px){.kpi-row{grid-template-columns:repeat(2,1fr)}.charts-grid,.upload-grid{grid-template-columns:1fr}.params-row{flex-wrap:wrap}}
     </style>
 </head>
 <body>
-    <div class="header">
-        <div>
-            <h1>IDR Projection Tool</h1>
-            <div class="subtitle">Upload Projection &amp; IDR Plan Lookup to generate IDR Projection, Pivot &amp; Dashboard</div>
+<div class="header">
+    <div>
+        <h1>IDR Projection Tool</h1>
+        <div class="subtitle">Upload Projection &amp; IDR Plan Lookup to generate IDR Projection, Pivot &amp; Dashboard</div>
+    </div>
+    <div id="downloadBtnHeader" style="display:none">
+        <button class="btn btn-success" onclick="downloadFile()">Download Output Excel</button>
+    </div>
+</div>
+<div class="container">
+    <div class="upload-section">
+        <h2>Upload Files &amp; Parameters</h2>
+        <form id="uploadForm" enctype="multipart/form-data">
+            <div class="upload-grid">
+                <div class="upload-box" id="box1" onclick="document.getElementById('thisMonth').click()" ondrop="handleDrop(event,'thisMonth')" ondragover="handleDragOver(event,'box1')" ondragleave="handleDragLeave(event,'box1')">
+                    <div class="icon">📊</div>
+                    <label>Projection This Month</label>
+                    <p>Excel with "Projection" tab (18 columns)</p>
+                    <input type="file" id="thisMonth" name="this_month" accept=".xlsx,.xls" onchange="fileSelected(this,'box1')">
+                    <div class="filename" id="file1Name"></div>
+                </div>
+                <div class="upload-box" id="box2" onclick="document.getElementById('lookupFile').click()" ondrop="handleDrop(event,'lookupFile')" ondragover="handleDragOver(event,'box2')" ondragleave="handleDragLeave(event,'box2')">
+                    <div class="icon">📋</div>
+                    <label>IDR Plan Lookup</label>
+                    <p>Lookup: Item Name, Packaging Type, Packaging Method</p>
+                    <input type="file" id="lookupFile" name="lookup_file" accept=".xlsx,.xls" onchange="fileSelected(this,'box2')">
+                    <div class="filename" id="file2Name"></div>
+                </div>
+            </div>
+            <div class="params-row">
+                <div class="param-group"><label>CF Multiplier (D2)</label><input type="number" id="cfValue" name="cf_value" value="1.3" step="0.1" min="1"></div>
+                <div class="param-group"><label>Working Days (F2)</label><input type="number" id="workingDays" name="working_days" value="25" min="1" max="31"></div>
+            </div>
+            <div class="btn-row">
+                <button type="submit" class="btn btn-primary" id="processBtn" disabled>Process Files</button>
+                <div class="loading" id="loadingIndicator"><div class="spinner"></div><span>Processing...</span></div>
+            </div>
+        </form>
+    </div>
+    <div class="dashboard" id="dashboard">
+        <div class="download-bar">
+            <div class="info">Output: <strong>IDR_Projection_Output.xlsx</strong> (3 tabs) &nbsp;<span class="badge badge-blue" id="badgeItems"></span>&nbsp;<span class="badge badge-green" id="badgeMatch"></span>&nbsp;<span class="badge badge-orange" id="badgeCF"></span></div>
+            <button class="btn btn-success" onclick="downloadFile()">Download Excel</button>
         </div>
-        <div id="downloadBtnHeader" style="display:none;">
-            <button class="btn btn-success" onclick="downloadFile()">Download Output Excel</button>
+        <div class="kpi-row">
+            <div class="kpi-card"><div class="label">Raw Projection Rows</div><div class="value" id="kpiRaw">-</div></div>
+            <div class="kpi-card"><div class="label">IDR Items (Indore)</div><div class="value" id="kpiItems">-</div></div>
+            <div class="kpi-card"><div class="label">Total Projection Units</div><div class="value" id="kpiUnits">-</div></div>
+            <div class="kpi-card"><div class="label">Total KGs</div><div class="value" id="kpiKgs">-</div></div>
+            <div class="kpi-card"><div class="label">Unique Items</div><div class="value" id="kpiUniqueItems">-</div></div>
+            <div class="kpi-card accent"><div class="label">Pkg Lookup Match</div><div class="value" id="kpiMatch">-</div></div>
+        </div>
+        <div class="charts-grid">
+            <div class="chart-card"><h3>By Item Group (Top 15)</h3><canvas id="chartItemGroup"></canvas></div>
+            <div class="chart-card"><h3>By Customer Group</h3><canvas id="chartCustomerGroup"></canvas></div>
+            <div class="chart-card"><h3>Packaging Method Distribution</h3><canvas id="chartPackagingMethod"></canvas></div>
+            <div class="chart-card"><h3>Item Type Distribution</h3><canvas id="chartItemType"></canvas></div>
+            <div class="chart-card"><h3>Top 10 Items by KGs</h3><canvas id="chartTopItems"></canvas></div>
+            <div class="chart-card"><h3>Top KAMs by KGs</h3><canvas id="chartKAM"></canvas></div>
+        </div>
+        <div class="table-section">
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab(this,'idr')">IDR Projection</button>
+                <button class="tab" onclick="switchTab(this,'pivotSrc')">Pivot - Source</button>
+                <button class="tab" onclick="switchTab(this,'pivotFW')">Pivot - FW</button>
+                <button class="tab" onclick="switchTab(this,'pivotFFS')">Pivot - (Multiple Items)</button>
+                <button class="tab" onclick="switchTab(this,'pivotVA')">Pivot - Value Added</button>
+                <button class="tab" onclick="switchTab(this,'dept')">Department</button>
+                <button class="tab" onclick="switchTab(this,'approach')">Approach &amp; Logic</button>
+            </div>
+            <div class="tab-content active" id="tab-idr"><div class="table-scroll" id="idrTableContainer"></div></div>
+            <div class="tab-content" id="tab-pivotSrc"><div class="table-scroll" id="pivotSrcContainer"></div></div>
+            <div class="tab-content" id="tab-pivotFW"><div class="table-scroll" id="pivotFWContainer"></div></div>
+            <div class="tab-content" id="tab-pivotFFS"><div class="table-scroll" id="pivotFFSContainer"></div></div>
+            <div class="tab-content" id="tab-pivotVA"><div class="table-scroll" id="pivotVAContainer"></div></div>
+            <div class="tab-content" id="tab-dept"><div class="table-scroll" id="deptContainer"></div></div>
+            <div class="tab-content" id="tab-approach"><div id="approachContainer"></div></div>
         </div>
     </div>
-
-    <div class="container">
-        <div class="upload-section">
-            <h2>Upload Files &amp; Parameters</h2>
-            <form id="uploadForm" enctype="multipart/form-data">
-                <div class="upload-grid">
-                    <div class="upload-box" id="box1" onclick="document.getElementById('thisMonth').click()"
-                         ondrop="handleDrop(event,'thisMonth')" ondragover="handleDragOver(event,'box1')" ondragleave="handleDragLeave(event,'box1')">
-                        <div class="icon">📊</div>
-                        <label>Projection This Month</label>
-                        <p>Excel file with "Projection" tab (18 columns)</p>
-                        <input type="file" id="thisMonth" name="this_month" accept=".xlsx,.xls" onchange="fileSelected(this,'box1')">
-                        <div class="filename" id="file1Name"></div>
-                    </div>
-                    <div class="upload-box" id="box2" onclick="document.getElementById('lookupFile').click()"
-                         ondrop="handleDrop(event,'lookupFile')" ondragover="handleDragOver(event,'box2')" ondragleave="handleDragLeave(event,'box2')">
-                        <div class="icon">📋</div>
-                        <label>IDR Plan Lookup</label>
-                        <p>Lookup file with Item Name, Packaging Type, Packaging Method</p>
-                        <input type="file" id="lookupFile" name="lookup_file" accept=".xlsx,.xls" onchange="fileSelected(this,'box2')">
-                        <div class="filename" id="file2Name"></div>
-                    </div>
-                </div>
-                <div class="params-row">
-                    <div class="param-group">
-                        <label>CF Multiplier (D2)</label>
-                        <input type="number" id="cfValue" name="cf_value" value="1.3" step="0.1" min="1">
-                    </div>
-                    <div class="param-group">
-                        <label>Working Days (F2)</label>
-                        <input type="number" id="workingDays" name="working_days" value="25" min="1" max="31">
-                    </div>
-                </div>
-                <div class="btn-row">
-                    <button type="submit" class="btn btn-primary" id="processBtn" disabled>Process Files</button>
-                    <div class="loading" id="loadingIndicator">
-                        <div class="spinner"></div>
-                        <span>Processing files...</span>
-                    </div>
-                </div>
-            </form>
-        </div>
-
-        <div class="dashboard" id="dashboard">
-            <div class="download-bar">
-                <div class="info">
-                    Output: <strong>IDR_Projection_Output.xlsx</strong> (3 tabs: Projection, IDR Projection, Pivot)
-                    &nbsp; <span class="badge badge-blue" id="badgeItems"></span>
-                    &nbsp; <span class="badge badge-green" id="badgeMatch"></span>
-                    &nbsp; <span class="badge badge-orange" id="badgeCF"></span>
-                </div>
-                <button class="btn btn-success" onclick="downloadFile()">Download Excel</button>
-            </div>
-
-            <div class="kpi-row">
-                <div class="kpi-card">
-                    <div class="label">Raw Projection Rows</div>
-                    <div class="value" id="kpiRaw">-</div>
-                </div>
-                <div class="kpi-card">
-                    <div class="label">IDR Items (Indore)</div>
-                    <div class="value" id="kpiItems">-</div>
-                </div>
-                <div class="kpi-card">
-                    <div class="label">Total Projection Units</div>
-                    <div class="value" id="kpiUnits">-</div>
-                </div>
-                <div class="kpi-card">
-                    <div class="label">Total KGs</div>
-                    <div class="value" id="kpiKgs">-</div>
-                </div>
-                <div class="kpi-card">
-                    <div class="label">Unique Items</div>
-                    <div class="value" id="kpiUniqueItems">-</div>
-                </div>
-                <div class="kpi-card accent">
-                    <div class="label">Pkg Lookup Match</div>
-                    <div class="value" id="kpiMatch">-</div>
-                </div>
-            </div>
-
-            <div class="charts-grid">
-                <div class="chart-card">
-                    <h3>Projection by Item Group (Top 15)</h3>
-                    <canvas id="chartItemGroup"></canvas>
-                </div>
-                <div class="chart-card">
-                    <h3>Projection by Customer Group</h3>
-                    <canvas id="chartCustomerGroup"></canvas>
-                </div>
-                <div class="chart-card">
-                    <h3>Packaging Method Distribution</h3>
-                    <canvas id="chartPackagingMethod"></canvas>
-                </div>
-                <div class="chart-card">
-                    <h3>Item Type Distribution</h3>
-                    <canvas id="chartItemType"></canvas>
-                </div>
-                <div class="chart-card">
-                    <h3>Top 10 Items by KGs</h3>
-                    <canvas id="chartTopItems"></canvas>
-                </div>
-                <div class="chart-card">
-                    <h3>Top KAMs by KGs</h3>
-                    <canvas id="chartKAM"></canvas>
-                </div>
-            </div>
-
-            <div class="table-section">
-                <div class="tabs">
-                    <button class="tab active" onclick="switchTab(this,'idr')">IDR Projection</button>
-                    <button class="tab" onclick="switchTab(this,'pivotSrc')">Pivot - Source</button>
-                    <button class="tab" onclick="switchTab(this,'pivotFW')">Pivot - FW Items</button>
-                    <button class="tab" onclick="switchTab(this,'pivotVA')">Pivot - Value Added</button>
-                    <button class="tab" onclick="switchTab(this,'dept')">Department (Day/Night)</button>
-                </div>
-                <div class="tab-content active" id="tab-idr">
-                    <div class="table-scroll" id="idrTableContainer"></div>
-                </div>
-                <div class="tab-content" id="tab-pivotSrc">
-                    <div class="table-scroll" id="pivotSrcContainer"></div>
-                </div>
-                <div class="tab-content" id="tab-pivotFW">
-                    <div class="table-scroll" id="pivotFWContainer"></div>
-                </div>
-                <div class="tab-content" id="tab-pivotVA">
-                    <div class="table-scroll" id="pivotVAContainer"></div>
-                </div>
-                <div class="tab-content" id="tab-dept">
-                    <div class="table-scroll" id="deptContainer"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
+</div>
 <script>
-const charts = {};
-function fmt(n) { return n != null ? Number(n).toLocaleString('en-IN') : '-'; }
-function fmtKg(n) { return n != null ? Number(n).toLocaleString('en-IN', {maximumFractionDigits:2}) : '-'; }
-
-function fileSelected(input, boxId) {
-    const box = document.getElementById(boxId);
-    const nameEl = boxId === 'box1' ? document.getElementById('file1Name') : document.getElementById('file2Name');
-    if (input.files.length) { box.classList.add('has-file'); nameEl.textContent = input.files[0].name; }
+const charts={};
+function fmt(n){return n!=null?Number(n).toLocaleString('en-IN'):'-'}
+function fmtKg(n){return n!=null?Number(n).toLocaleString('en-IN',{maximumFractionDigits:2}):'-'}
+function fileSelected(input,boxId){
+    const box=document.getElementById(boxId);
+    const el=boxId==='box1'?document.getElementById('file1Name'):document.getElementById('file2Name');
+    if(input.files.length){box.classList.add('has-file');el.textContent=input.files[0].name}
     checkReady();
 }
-function handleDragOver(e, boxId) { e.preventDefault(); document.getElementById(boxId).classList.add('dragover'); }
-function handleDragLeave(e, boxId) { e.preventDefault(); document.getElementById(boxId).classList.remove('dragover'); }
-function handleDrop(e, inputId) {
-    e.preventDefault();
-    const input = document.getElementById(inputId);
-    input.files = e.dataTransfer.files;
-    const boxId = inputId === 'thisMonth' ? 'box1' : 'box2';
-    document.getElementById(boxId).classList.remove('dragover');
-    fileSelected(input, boxId);
+function handleDragOver(e,b){e.preventDefault();document.getElementById(b).classList.add('dragover')}
+function handleDragLeave(e,b){e.preventDefault();document.getElementById(b).classList.remove('dragover')}
+function handleDrop(e,inputId){
+    e.preventDefault();const input=document.getElementById(inputId);input.files=e.dataTransfer.files;
+    const b=inputId==='thisMonth'?'box1':'box2';document.getElementById(b).classList.remove('dragover');
+    fileSelected(input,b);
 }
-function checkReady() {
-    const f1 = document.getElementById('thisMonth').files.length > 0;
-    const f2 = document.getElementById('lookupFile').files.length > 0;
-    document.getElementById('processBtn').disabled = !(f1 && f2);
+function checkReady(){
+    document.getElementById('processBtn').disabled=!(document.getElementById('thisMonth').files.length&&document.getElementById('lookupFile').files.length);
 }
-
-document.getElementById('uploadForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const formData = new FormData(this);
-    document.getElementById('processBtn').disabled = true;
+document.getElementById('uploadForm').addEventListener('submit',async function(e){
+    e.preventDefault();const fd=new FormData(this);
+    document.getElementById('processBtn').disabled=true;
     document.getElementById('loadingIndicator').classList.add('active');
     document.getElementById('dashboard').classList.remove('active');
-    try {
-        const resp = await fetch('/process', { method: 'POST', body: formData });
-        const data = await resp.json();
-        if (resp.ok) renderDashboard(data);
-        else alert('Error: ' + (data.error || 'Unknown error'));
-    } catch (err) { alert('Network error: ' + err.message); }
-    finally {
-        document.getElementById('processBtn').disabled = false;
-        document.getElementById('loadingIndicator').classList.remove('active');
-    }
+    try{
+        const r=await fetch('/process',{method:'POST',body:fd});const d=await r.json();
+        if(r.ok)renderDashboard(d);else alert('Error: '+(d.error||'Unknown'));
+    }catch(err){alert('Network error: '+err.message)}
+    finally{document.getElementById('processBtn').disabled=false;document.getElementById('loadingIndicator').classList.remove('active')}
 });
 
-function renderDashboard(data) {
+function renderDashboard(d){
     document.getElementById('dashboard').classList.add('active');
-    document.getElementById('downloadBtnHeader').style.display = 'block';
+    document.getElementById('downloadBtnHeader').style.display='block';
+    document.getElementById('kpiRaw').textContent=fmt(d.total_raw_items);
+    document.getElementById('kpiItems').textContent=fmt(d.total_items);
+    document.getElementById('kpiUnits').textContent=fmt(d.total_projection_units);
+    document.getElementById('kpiKgs').textContent=fmtKg(d.total_kgs);
+    document.getElementById('kpiUniqueItems').textContent=fmt(d.unique_items);
+    document.getElementById('kpiMatch').textContent=d.pkg_match_rate+'%';
+    document.getElementById('badgeItems').textContent=d.total_items+' IDR rows';
+    document.getElementById('badgeMatch').textContent=d.pkg_match_rate+'% pkg match';
+    document.getElementById('badgeCF').textContent='CF='+d.cf_value+' | '+d.working_days+' days';
 
-    document.getElementById('kpiRaw').textContent = fmt(data.total_raw_items);
-    document.getElementById('kpiItems').textContent = fmt(data.total_items);
-    document.getElementById('kpiUnits').textContent = fmt(data.total_projection_units);
-    document.getElementById('kpiKgs').textContent = fmtKg(data.total_kgs);
-    document.getElementById('kpiUniqueItems').textContent = fmt(data.unique_items);
-    document.getElementById('kpiMatch').textContent = data.pkg_match_rate + '%';
-    document.getElementById('badgeItems').textContent = data.total_items + ' IDR rows';
-    document.getElementById('badgeMatch').textContent = data.pkg_match_rate + '% pkg match';
-    document.getElementById('badgeCF').textContent = 'CF=' + data.cf_value + ' | ' + data.working_days + ' days';
-
-    const colors = ['#2F5496','#27ae60','#e67e22','#e74c3c','#9b59b6','#1abc9c','#f1c40f','#34495e','#d35400','#2980b9','#8e44ad','#16a085','#c0392b','#7f8c8d','#2c3e50'];
-
-    function makeChart(id, type, labels, datasets, opts) {
-        if (charts[id]) charts[id].destroy();
-        charts[id] = new Chart(document.getElementById(id).getContext('2d'), {
-            type, data: { labels, datasets },
-            options: { responsive: true, maintainAspectRatio: true, ...opts }
-        });
+    const C=['#2F5496','#27ae60','#e67e22','#e74c3c','#9b59b6','#1abc9c','#f1c40f','#34495e','#d35400','#2980b9','#8e44ad','#16a085','#c0392b','#7f8c8d','#2c3e50'];
+    function mc(id,type,labels,datasets,opts){
+        if(charts[id])charts[id].destroy();
+        charts[id]=new Chart(document.getElementById(id).getContext('2d'),{type,data:{labels,datasets},options:{responsive:true,maintainAspectRatio:true,...opts}});
     }
+    mc('chartItemGroup','bar',Object.keys(d.item_groups),[{label:'Count',data:Object.values(d.item_groups),backgroundColor:C}],{plugins:{legend:{display:false}},scales:{x:{ticks:{maxRotation:45,font:{size:10}}}}});
+    mc('chartCustomerGroup','doughnut',Object.keys(d.customer_groups),[{data:Object.values(d.customer_groups),backgroundColor:C}],{plugins:{legend:{position:'right',labels:{font:{size:11}}}}});
+    mc('chartPackagingMethod','pie',Object.keys(d.packaging_methods),[{data:Object.values(d.packaging_methods),backgroundColor:C}],{plugins:{legend:{position:'right',labels:{font:{size:11}}}}});
+    mc('chartItemType','doughnut',Object.keys(d.item_types),[{data:Object.values(d.item_types),backgroundColor:C}],{plugins:{legend:{position:'right'}}});
+    mc('chartTopItems','bar',Object.keys(d.top_items_by_kg).map(k=>k.length>30?k.substring(0,30)+'...':k),[{label:'KGs',data:Object.values(d.top_items_by_kg),backgroundColor:'#2F5496'}],{indexAxis:'y',plugins:{legend:{display:false}}});
+    mc('chartKAM','bar',Object.keys(d.kam_summary).map(k=>k.length>20?k.substring(0,20)+'...':k),[{label:'KGs',data:Object.values(d.kam_summary),backgroundColor:'#27ae60'}],{indexAxis:'y',plugins:{legend:{display:false}}});
 
-    let ig = data.item_groups;
-    makeChart('chartItemGroup', 'bar', Object.keys(ig),
-        [{ label: 'Count', data: Object.values(ig), backgroundColor: colors }],
-        { plugins: { legend: { display: false } }, scales: { x: { ticks: { maxRotation: 45, font: { size: 10 } } } } });
+    renderTable('idrTableContainer',d.idr_preview,['Item Group','Item Name','Item Parent','Conversion Factor','Projection Units','Total KGs','Packaging Type','Packaging Method','Item Type','Customer Group','Origin','Customer','Key Account Manager']);
+    renderTable('pivotSrcContainer',d.pivot_source,['Source','Projected Units','Projected Kg']);
+    renderTable('pivotFWContainer',d.pivot_fw,['Item Name','Projected Units','Projected Kg']);
+    renderTable('pivotFFSContainer',d.pivot_ffs,['Item Name','Projected Units','Projected Kg','1.3 CF','Per Day Production Kg']);
+    renderTable('pivotVAContainer',d.pivot_va,['Item Name','Projected Kg','1.3 CF','Per Day Kg Prod','Roasting Item (%)','Roasting Kg','Oven Cycle','No of Oven Cycle']);
 
-    let cg = data.customer_groups;
-    makeChart('chartCustomerGroup', 'doughnut', Object.keys(cg),
-        [{ data: Object.values(cg), backgroundColor: colors }],
-        { plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } } });
-
-    let pm = data.packaging_methods;
-    makeChart('chartPackagingMethod', 'pie', Object.keys(pm),
-        [{ data: Object.values(pm), backgroundColor: colors }],
-        { plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } } });
-
-    let it = data.item_types;
-    makeChart('chartItemType', 'doughnut', Object.keys(it),
-        [{ data: Object.values(it), backgroundColor: colors }],
-        { plugins: { legend: { position: 'right' } } });
-
-    let ti = data.top_items_by_kg;
-    makeChart('chartTopItems', 'bar',
-        Object.keys(ti).map(k => k.length > 30 ? k.substring(0,30)+'...' : k),
-        [{ label: 'KGs', data: Object.values(ti), backgroundColor: '#2F5496' }],
-        { indexAxis: 'y', plugins: { legend: { display: false } } });
-
-    let kam = data.kam_summary;
-    makeChart('chartKAM', 'bar',
-        Object.keys(kam).map(k => k.length > 20 ? k.substring(0,20)+'...' : k),
-        [{ label: 'KGs', data: Object.values(kam), backgroundColor: '#27ae60' }],
-        { indexAxis: 'y', plugins: { legend: { display: false } } });
-
-    renderTable('idrTableContainer', data.idr_preview,
-        ['Item Group','Item Name','Item Parent','Conversion Factor','Projection Units','Total KGs','Packaging Type','Packaging Method','Item Type','Customer Group','Origin','Customer','Key Account Manager']);
-
-    renderTable('pivotSrcContainer', data.pivot_source, ['Source','Projected Units','Projected Kg']);
-    renderTable('pivotFWContainer', data.pivot_fw, ['Item Name','Projected Units','Projected Kg']);
-    renderTable('pivotVAContainer', data.pivot_va, ['Item Name','Projected Kg']);
-
-    // Department table with highlight
-    let dhtml = '<table class="data-table"><thead><tr><th>Department</th><th>Day</th><th style="background:#FFFF00;color:#333;">Night</th></tr></thead><tbody>';
-    (data.dept_data||[]).forEach(r => {
-        let nh = (r.Night !== '' && r.Night !== null) ? ' class="highlight"' : '';
-        dhtml += '<tr><td>' + r.Department + '</td><td>' + r.Day + '</td><td' + nh + '>' + (r.Night !== '' ? r.Night : '') + '</td></tr>';
+    // Department table
+    let dh='<table class="data-table"><thead><tr><th>Department</th><th>Day</th><th style="background:#FFFF00;color:#333">Night</th></tr></thead><tbody>';
+    (d.dept_data||[]).forEach(r=>{
+        let nh=r.Night!==''&&r.Night!=null?' class="hl"':'';
+        dh+='<tr><td>'+r.Department+'</td><td>'+r.Day+'</td><td'+nh+'>'+(r.Night!==''?r.Night:'')+'</td></tr>';
     });
-    dhtml += '</tbody></table>';
-    document.getElementById('deptContainer').innerHTML = dhtml;
+    let dayTotal=0,nightTotal=0;
+    (d.dept_data||[]).forEach(r=>{dayTotal+=Number(r.Day)||0;nightTotal+=Number(r.Night)||0});
+    dh+='<tr class="bold"><td>Total</td><td>'+dayTotal+'</td><td>'+nightTotal+'</td></tr>';
+    dh+='</tbody></table>';
+    document.getElementById('deptContainer').innerHTML=dh;
+
+    // Approach tab
+    document.getElementById('approachContainer').innerHTML=buildApproach(d);
 }
 
-function renderTable(containerId, rows, cols) {
-    if (!rows || !rows.length) {
-        document.getElementById(containerId).innerHTML = '<p style="padding:20px;color:#999;">No data available</p>';
-        return;
-    }
-    let html = '<table class="data-table"><thead><tr>';
-    cols.forEach(c => html += '<th>' + c + '</th>');
-    html += '</tr></thead><tbody>';
-    rows.forEach(r => {
-        html += '<tr>';
-        cols.forEach(c => {
-            let v = r[c];
-            if (v == null || v === 'nan' || v === 'NaN') v = '';
-            if (typeof v === 'number') v = v % 1 === 0 ? fmt(v) : fmtKg(v);
-            html += '<td>' + v + '</td>';
-        });
-        html += '</tr>';
-    });
-    html += '</tbody></table>';
-    document.getElementById(containerId).innerHTML = html;
+function buildApproach(d){
+    return `<div class="approach-card">
+<h3>Complete Processing Approach &amp; Logic</h3>
+
+<h4>Step 1: Input Files</h4>
+<ul>
+<li><strong>Projection This Month</strong> - Raw ERP export with 18 columns (Month, Year, Item Code, Item Group, Item Name, Item Parent, Conversion Factor, Projection Units, Customer, KAM, Total KGs, Customer Group, Origin, Created By, Item Type, etc.)</li>
+<li><strong>IDR Plan Lookup</strong> - Master mapping file with 3 columns: <code>Item Name</code>, <code>Packaging Type</code> (Pouch/Jar), <code>Packaging Method</code> (PFS/FW/Table/Conti Mix/Pace-FFS/Perfect-FFS/etc.)</li>
+</ul>
+
+<h4>Step 2: IDR Projection Tab (Output Tab 2)</h4>
+<ul>
+<li>Read all rows from the <code>Projection</code> tab of the input file</li>
+<li><strong>Filter</strong>: Keep only rows where <code>Origin = Indore</code> (factory location filter)</li>
+<li><strong>VLOOKUP Packaging</strong>: For each Item Name, lookup <code>Packaging Type</code> and <code>Packaging Method</code> from the IDR Plan Lookup file (exact match on Item Name)</li>
+<li><strong>Reorder columns</strong> to IDR standard: Item Group, Item Name, Item Parent, Conversion Factor, Projection Units, Total KGs, <strong>Packaging Type</strong>, <strong>Packaging Method</strong>, Item Type, Customer Group, Origin, Created By, Month, Year, Last Modified Date, Last Modified Time, BOM Item Type, Customer, KAM, Item Code</li>
+<li>Result: <strong>${d.total_items} rows</strong> (from ${d.total_raw_items} raw), <strong>${d.pkg_match_rate}% packaging match rate</strong></li>
+</ul>
+
+<h4>Step 3: Pivot Tab - Section 1: Source Summary (Columns A-H)</h4>
+<ul>
+<li><strong>Group by</strong>: Packaging Method (Source)</li>
+<li><strong>Aggregate</strong>: SUM of Projection Units, SUM of Total KGs per source</li>
+<li><strong>Calculated columns (Excel formulas)</strong>:</li>
+</ul>
+<div class="formula">
+1.3 CF = Projected Units &times; D2 (CF Multiplier = ${d.cf_value})<br>
+Sum of Pro (1.3 CF) Kg = Projected Kg &times; D2<br>
+Per Day PCS Prod. = 1.3 CF / F2 (Working Days = ${d.working_days})<br>
+No. of PCS Prod. (per shift) = Machine capacity per shift (hardcoded per source)<br>
+No of Cycles = Per Day PCS Prod. / No. of PCS Prod. (per shift)
+</div>
+<table><thead><tr><th>Source</th><th>Shift Capacity</th><th>Capacity Logic</th></tr></thead><tbody>
+<tr><td>Conti Mix</td><td>6,500</td><td>Fixed capacity</td></tr>
+<tr><td>FW</td><td>=90*60*3*7 (113,400)</td><td>90 pcs/min &times; 60 min &times; 3 lines &times; 7 hrs</td></tr>
+<tr><td>Jar Sealing</td><td>2,500</td><td>Fixed capacity</td></tr>
+<tr><td>Jar Sealing - WAD Machine</td><td>2,400</td><td>Fixed capacity</td></tr>
+<tr><td>LD Pack of 2</td><td>2,500</td><td>Fixed capacity</td></tr>
+<tr><td>LD Pack of 4</td><td>=1248/0.8 (1,560)</td><td>Base / factor</td></tr>
+<tr><td>Pace - FFS</td><td>=80*60*7 (33,600)</td><td>80 pcs/min &times; 60 min &times; 7 hrs</td></tr>
+<tr><td>Perfect - FFS</td><td>=45*60*6 (16,200)</td><td>45 pcs/min &times; 60 min &times; 6 hrs</td></tr>
+<tr><td>PFS</td><td>24,000</td><td>Fixed capacity</td></tr>
+<tr><td>Table</td><td>2,500</td><td>Fixed capacity</td></tr>
+<tr><td>Table - Airlines</td><td>18,000</td><td>Fixed capacity</td></tr>
+</tbody></table>
+
+<h4>Step 4: Pivot Tab - Section 2a: FW Packaging (Columns K-O)</h4>
+<ul>
+<li><strong>Filter</strong>: Packaging Method = <code>FW</code> only</li>
+<li><strong>Group by</strong>: Item Name</li>
+<li><strong>Columns</strong>: Item Name, Projected Units, Projected Kg</li>
+<li><strong>Formulas</strong>: <code>1.3 CF = Projected Kg &times; CF</code>, <code>Per Day Production Kg = 1.3 CF / Working Days</code></li>
+</ul>
+
+<h4>Step 5: Pivot Tab - Section 2b: Multiple Items (Columns K-O, below FW)</h4>
+<ul>
+<li><strong>Filter</strong>: Packaging Method IN (<code>Pace - FFS</code>, <code>Perfect - FFS</code>)</li>
+<li>These are the two FFS machine methods combined as "(Multiple Items)"</li>
+<li><strong>Group by</strong>: Item Name</li>
+<li>Same calculated columns as FW section</li>
+</ul>
+
+<h4>Step 6: Pivot Tab - Section 3: Value Added (Columns R-Y)</h4>
+<ul>
+<li><strong>Filter</strong>: Item Type = <code>Value Added</code></li>
+<li><strong>Group by</strong>: Item Parent (shown as Item Name)</li>
+<li><strong>Calculated columns</strong>:</li>
+</ul>
+<div class="formula">
+1.3 CF = Projected Kg &times; CF Multiplier (${d.cf_value})<br>
+Per Day Kg Prod = 1.3 CF / Working Days (${d.working_days})<br>
+Roasting Item (%) = Lookup from roasting reference table (% of product requiring roasting)<br>
+Roasting Kg = Per Day Kg Prod &times; Roasting Item (%)<br>
+Oven Cycle (SKU Level) = Oven capacity per cycle from reference table (kg/cycle)<br>
+No of Oven Cycle = Roasting Kg / Oven Cycle (SKU Level)
+</div>
+<p style="font-size:13px;color:#666;margin-top:8px"><em>Roasting % and Oven Cycle capacity values are maintained in a reference lookup (sourced from previous month's production plan). These represent the proportion of each product that requires roasting and the oven's batch capacity per SKU.</em></p>
+
+<h4>Step 7: Pivot Tab - Section 4: Department Manpower (Columns A-C, below Source)</h4>
+<ul>
+<li><strong>Purpose</strong>: Factory department staffing plan for Day and Night shifts</li>
+<li><strong>Logic</strong>: These are <strong>manually maintained headcounts</strong> reflecting the planned number of workers per department per shift</li>
+<li>Night shift column highlighted in <span style="background:#FFFF00;padding:2px 6px">yellow</span> = departments that operate night shifts</li>
+<li>Empty Night cells = department does not run a night shift</li>
+</ul>
+<table><thead><tr><th>Department</th><th>Day</th><th>Night</th><th>Calculation Logic</th></tr></thead><tbody>
+<tr><td>Production</td><td>80</td><td>48</td><td>=10 workers &times; 8 hrs (Day), =6 workers &times; 8 hrs (Night)</td></tr>
+<tr><td>Airlines</td><td>34</td><td>14</td><td>Fixed headcount for airlines packaging</td></tr>
+<tr><td>DB Conversion</td><td>48</td><td>-</td><td>Day-only: dry fruit bulk conversion</td></tr>
+<tr><td>Conti</td><td>12</td><td>-</td><td>Day-only: continuous mix machine operators</td></tr>
+<tr><td>PFS</td><td>16</td><td>16</td><td>24/7 operation: pouch fill &amp; seal</td></tr>
+<tr><td>FW</td><td>36</td><td>12</td><td>Flow wrap machine operators</td></tr>
+<tr><td>DB Bulk</td><td>35</td><td>-</td><td>Day-only: dry fruit bulk packing</td></tr>
+<tr><td>VA Bulk</td><td>17</td><td>12</td><td>Value-added bulk processing</td></tr>
+<tr><td>Inventory</td><td>15</td><td>5</td><td>Warehouse &amp; inventory management</td></tr>
+<tr><td>Dispatch</td><td>20</td><td>8</td><td>Loading &amp; dispatch operations</td></tr>
+<tr><td>RTV</td><td>10</td><td>-</td><td>Day-only: return to vendor processing</td></tr>
+<tr><td>Quality</td><td>12</td><td>3</td><td>QC inspection &amp; testing</td></tr>
+<tr><td>FFS</td><td>10</td><td>10</td><td>24/7: form-fill-seal machine operators</td></tr>
+<tr><td>HK</td><td>16</td><td>2</td><td>Housekeeping &amp; sanitation</td></tr>
+<tr><td>R&amp;M</td><td>5</td><td>-</td><td>Day-only: repair &amp; maintenance</td></tr>
+<tr class="bold"><td>Total</td><td>366</td><td>130</td><td>Total planned headcount across all departments</td></tr>
+</tbody></table>
+<p style="font-size:13px;color:#666;margin-top:8px"><em>These values are static inputs maintained by the production planning team. They are included in the Pivot tab for reference alongside production capacity calculations. The "100" below the Night total in the original file appears to be a separate reference note.</em></p>
+
+<h4>Summary: Data Flow</h4>
+<div class="formula">
+Projection (Raw ERP) &rarr; Filter Origin=Indore &rarr; VLOOKUP Packaging from IDR Plan Lookup<br>
+&rarr; IDR Projection Tab (20 columns)<br>
+&rarr; Pivot Tab: Group by Packaging Method (Source), FW items, FFS items, Value Added by Item Parent<br>
+&rarr; Apply CF=${d.cf_value} multiplier and /${d.working_days} days for daily production rates<br>
+&rarr; Roasting analysis for Value Added items using reference lookup
+</div>
+</div>`;
 }
 
-function switchTab(btn, tab) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+function renderTable(cid,rows,cols){
+    if(!rows||!rows.length){document.getElementById(cid).innerHTML='<p style="padding:20px;color:#999">No data</p>';return}
+    let h='<table class="data-table"><thead><tr>';
+    cols.forEach(c=>h+='<th>'+c+'</th>');
+    h+='</tr></thead><tbody>';
+    rows.forEach(r=>{h+='<tr>';cols.forEach(c=>{let v=r[c];if(v==null||v==='nan'||v==='NaN')v='';if(typeof v==='number')v=v%1===0?fmt(v):fmtKg(v);h+='<td>'+v+'</td>'});h+='</tr>'});
+    h+='</tbody></table>';
+    document.getElementById(cid).innerHTML=h;
+}
+function switchTab(btn,tab){
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
     btn.classList.add('active');
-    document.getElementById('tab-' + tab).classList.add('active');
+    document.getElementById('tab-'+tab).classList.add('active');
 }
-
-function downloadFile() { window.location.href = '/download'; }
+function downloadFile(){window.location.href='/download'}
 </script>
 </body>
 </html>
