@@ -379,17 +379,13 @@ def build_output_excel(df_proj, df_idr, pivot_source, pivot_fw, pivot_ffs, pivot
         ws_p.cell(row=r, column=21, value=f'=T{r}/$U$2').border = tb
         ws_p.cell(row=r, column=21).number_format = nk
 
-        roast_pct, oven_cap = ROASTING_LOOKUP.get(item, (0, 0))
-        ws_p.cell(row=r, column=22, value=roast_pct).border = tb
+        ws_p.cell(row=r, column=22).border = tb
         ws_p.cell(row=r, column=22).number_format = '0%'
         ws_p.cell(row=r, column=23, value=f'=U{r}*V{r}').border = tb
         ws_p.cell(row=r, column=23).number_format = nk
-        ws_p.cell(row=r, column=24, value=oven_cap).border = tb
+        ws_p.cell(row=r, column=24).border = tb
         ws_p.cell(row=r, column=24).number_format = nu
-        if oven_cap and oven_cap > 0:
-            ws_p.cell(row=r, column=25, value=f'=W{r}/X{r}').border = tb
-        else:
-            ws_p.cell(row=r, column=25, value=0).border = tb
+        ws_p.cell(row=r, column=25, value=f'=IF(X{r}>0,W{r}/X{r},0)').border = tb
         ws_p.cell(row=r, column=25).number_format = '0.00'
 
     va_end = va_start + max(len(pivot_va) - 1, 0)
@@ -420,11 +416,10 @@ def build_output_excel(df_proj, df_idr, pivot_source, pivot_fw, pivot_ffs, pivot
     for di, (dept, day, night) in enumerate(DEPT_DATA):
         r = dept_start + 1 + di
         ws_p.cell(row=r, column=1, value=dept).border = tb
-        ws_p.cell(row=r, column=2, value=day).border = tb
-        c = ws_p.cell(row=r, column=3, value=night if night != '' else None)
+        ws_p.cell(row=r, column=2).border = tb
+        c = ws_p.cell(row=r, column=3)
         c.border = tb
-        if night != '':
-            c.fill = yfill
+        c.fill = yfill
 
     total_r = dept_start + 1 + len(DEPT_DATA)
     ws_p.cell(row=total_r, column=1, value='Total').font = bf
@@ -436,6 +431,149 @@ def build_output_excel(df_proj, df_idr, pivot_source, pivot_fw, pivot_ffs, pivot
 
     for ci in range(1, 26):
         ws_p.column_dimensions[get_column_letter(ci)].width = 22
+
+    # ========== Tab 4: Formulas & Logic ==========
+    ws_f = wb.create_sheet('Formulas & Logic')
+    title_font = Font(bold=True, size=14, color='2F5496')
+    sec_font = Font(bold=True, size=12, color='2F5496')
+    hdr_font = Font(bold=True, size=11)
+    ws_f.column_dimensions['A'].width = 8
+    ws_f.column_dimensions['B'].width = 35
+    ws_f.column_dimensions['C'].width = 55
+    ws_f.column_dimensions['D'].width = 55
+
+    r = 1
+    ws_f.cell(row=r, column=2, value='IDR Projection Tool - Formulas & Logic').font = title_font
+    r += 2
+
+    ws_f.cell(row=r, column=2, value='Parameters Used').font = sec_font
+    r += 1
+    ws_f.cell(row=r, column=2, value='CF Multiplier (D2)').font = hdr_font
+    ws_f.cell(row=r, column=3, value=f'{cf_value} - Produces {cf_value}x of projected quantity as buffer')
+    r += 1
+    ws_f.cell(row=r, column=2, value='Working Days (F2)').font = hdr_font
+    ws_f.cell(row=r, column=3, value=f'{working_days} - Number of factory operating days in the month')
+    r += 2
+
+    ws_f.cell(row=r, column=2, value='Tab 1: Projection').font = sec_font
+    r += 1
+    ws_f.cell(row=r, column=2, value='Content')
+    ws_f.cell(row=r, column=3, value='Raw input data copied as-is from the uploaded Projection file')
+    r += 1
+    ws_f.cell(row=r, column=2, value='Purpose')
+    ws_f.cell(row=r, column=3, value='Preserves original data for reference and audit trail')
+    r += 2
+
+    ws_f.cell(row=r, column=2, value='Tab 2: IDR Projection').font = sec_font
+    r += 1
+    ws_f.cell(row=r, column=2, value='Filter Applied')
+    ws_f.cell(row=r, column=3, value='Only rows where Origin = "Indore" are included')
+    r += 1
+    ws_f.cell(row=r, column=2, value='Columns G-H Added')
+    ws_f.cell(row=r, column=3, value='Packaging Type & Method derived via VLOOKUP on Item Name from IDR Plan Lookup file')
+    r += 1
+    ws_f.cell(row=r, column=2, value='Column Order')
+    ws_f.cell(row=r, column=3, value='Item Group, Item Name, Item Parent, Conversion Factor, Projection Units, Total KGs, Packaging Type, Packaging Method, Item Type, ...')
+    r += 2
+
+    ws_f.cell(row=r, column=2, value='Tab 3: Pivot - Section 1 (Source Summary, Col A-H)').font = sec_font
+    r += 1
+    formulas_s1 = [
+        ('Column A: Source', 'Grouped by Packaging Method from IDR Projection'),
+        ('Column B: Projected Units', 'SUM of Projection Units per Packaging Method'),
+        ('Column C: Projected Kg', 'SUM of Total KGs per Packaging Method'),
+        ('Column D: 1.3 CF', '= B * $D$2 (Projected Units x CF Multiplier)'),
+        ('Column E: Sum of Pro (1.3 CF) Kg', '= C * $D$2 (Projected Kg x CF Multiplier)'),
+        ('Column F: Per Day PCS Prod.', '= D / $F$2 (CF Units / Working Days)'),
+        ('Column G: No. of PCS Prod. (per shift)', 'Shift capacity per source (hardcoded reference values)'),
+        ('Column H: No of Cycles', '= F / G (Per Day Production / Shift Capacity)'),
+    ]
+    for label, desc in formulas_s1:
+        ws_f.cell(row=r, column=2, value=label).font = hdr_font
+        ws_f.cell(row=r, column=3, value=desc)
+        r += 1
+
+    r += 1
+    ws_f.cell(row=r, column=2, value='Shift Capacity Reference Values (Col G)').font = sec_font
+    r += 1
+    ws_f.cell(row=r, column=2, value='Source').font = hdr_font
+    ws_f.cell(row=r, column=3, value='Capacity Formula').font = hdr_font
+    r += 1
+    for source, cap in SHIFT_CAPACITY.items():
+        ws_f.cell(row=r, column=2, value=source)
+        ws_f.cell(row=r, column=3, value=str(cap))
+        r += 1
+
+    r += 1
+    ws_f.cell(row=r, column=2, value='Tab 3: Pivot - Section 2a (FW Items, Col K-O)').font = sec_font
+    r += 1
+    formulas_fw = [
+        ('Column K: Item Name', 'Filtered where Packaging Method = "FW", grouped by Item Name'),
+        ('Column L: Projected Units', 'SUM of Projection Units per Item Name'),
+        ('Column M: Projected Kg', 'SUM of Total KGs per Item Name'),
+        ('Column N: 1.3 CF', '= M * $N$2 (Projected Kg x CF Multiplier)'),
+        ('Column O: Per Day Production Kg', '= N / $O$2 (CF Kg / Working Days)'),
+    ]
+    for label, desc in formulas_fw:
+        ws_f.cell(row=r, column=2, value=label).font = hdr_font
+        ws_f.cell(row=r, column=3, value=desc)
+        r += 1
+
+    r += 1
+    ws_f.cell(row=r, column=2, value='Tab 3: Pivot - Section 2b (Multiple Items = Pace-FFS + Perfect-FFS, Col K-O)').font = sec_font
+    r += 1
+    ws_f.cell(row=r, column=2, value='Filter')
+    ws_f.cell(row=r, column=3, value='Packaging Method IN ("Pace - FFS", "Perfect - FFS") combined as "(Multiple Items)"')
+    r += 1
+    ws_f.cell(row=r, column=2, value='Same formulas as FW section with separate CF/Days parameter references')
+    r += 2
+
+    ws_f.cell(row=r, column=2, value='Tab 3: Pivot - Section 3 (Value Added, Col R-Y)').font = sec_font
+    r += 1
+    formulas_va = [
+        ('Column R: Item Name', 'Filtered where Item Type = "Value Added", grouped by Item Parent'),
+        ('Column S: Projected Kg', 'SUM of Total KGs per Item Parent'),
+        ('Column T: 1.3 CF', '= S * $T$2 (Projected Kg x CF Multiplier)'),
+        ('Column U: Per Day Kg Prod', '= T / $U$2 (CF Kg / Working Days)'),
+        ('Column V: Roasting Item (%)', 'User-fillable: % of item that requires roasting'),
+        ('Column W: Roasting Kg', '= U * V (Per Day Kg x Roasting %)'),
+        ('Column X: Oven Cycle (SKU Level)', 'User-fillable: Oven cycle capacity in Kg per cycle'),
+        ('Column Y: No of Oven Cycle', '= IF(X>0, W/X, 0) (Roasting Kg / Oven Cycle Capacity)'),
+    ]
+    for label, desc in formulas_va:
+        ws_f.cell(row=r, column=2, value=label).font = hdr_font
+        ws_f.cell(row=r, column=3, value=desc)
+        r += 1
+
+    r += 1
+    ws_f.cell(row=r, column=2, value='Tab 3: Pivot - Section 4 (Department Manpower, Col A-C)').font = sec_font
+    r += 1
+    ws_f.cell(row=r, column=2, value='Day & Night columns')
+    ws_f.cell(row=r, column=3, value='Empty cells for manual entry of department-wise shift headcount')
+    r += 1
+    ws_f.cell(row=r, column=2, value='Total Row')
+    ws_f.cell(row=r, column=3, value='= SUM of Day column, SUM of Night column (auto-calculated)')
+    r += 1
+    ws_f.cell(row=r, column=2, value='Night column highlight')
+    ws_f.cell(row=r, column=3, value='Yellow background indicates Night shift cells')
+    r += 2
+
+    ws_f.cell(row=r, column=2, value='Processing Pipeline Summary').font = sec_font
+    r += 1
+    steps = [
+        ('Step 1', 'Read Projection file (auto-detects sheet: "Projection", "Query Report", or first sheet)'),
+        ('Step 2', 'Read IDR Plan Lookup file for Item Name -> Packaging Type/Method mapping'),
+        ('Step 3', 'Build IDR Projection: reorder columns, add Packaging Type & Method via lookup'),
+        ('Step 4', 'Filter: keep only rows where Origin = "Indore"'),
+        ('Step 5', 'Generate Pivot Source Summary: group by Packaging Method, apply CF & Working Days formulas'),
+        ('Step 6', 'Generate FW & FFS item breakdowns with per-day production calculations'),
+        ('Step 7', 'Generate Value Added breakdown with roasting formula placeholders'),
+        ('Step 8', 'Department manpower table with empty Day/Night cells for manual entry'),
+    ]
+    for label, desc in steps:
+        ws_f.cell(row=r, column=2, value=label).font = hdr_font
+        ws_f.cell(row=r, column=3, value=desc)
+        r += 1
 
     output = io.BytesIO()
     wb.save(output)
@@ -480,14 +618,11 @@ def process():
         kg = row['Projected Kg']
         cf_kg = kg * cf_value
         per_day = cf_kg / working_days
-        rpct, ocap = ROASTING_LOOKUP.get(item, (0, 0))
-        rkg = per_day * rpct
-        nocyc = rkg / ocap if ocap > 0 else 0
         va_dashboard.append({
             'Item Name': item, 'Projected Kg': round(kg, 2),
             '1.3 CF': round(cf_kg, 2), 'Per Day Kg Prod': round(per_day, 0),
-            'Roasting Item (%)': f'{rpct:.0%}', 'Roasting Kg': round(rkg, 2),
-            'Oven Cycle': ocap, 'No of Oven Cycle': round(nocyc, 2)
+            'Roasting Item (%)': '', 'Roasting Kg': '',
+            'Oven Cycle': '', 'No of Oven Cycle': ''
         })
 
     # Build FFS dashboard data
@@ -527,7 +662,7 @@ def process():
         'pkg_match_rate': round(
             (df_idr['Packaging Type'].notna() & (df_idr['Packaging Type'] != '') & (df_idr['Packaging Type'] != 'nan')).sum() / len(df_idr) * 100, 1
         ) if len(df_idr) > 0 else 0,
-        'dept_data': [{'Department': d, 'Day': dy, 'Night': n if n != '' else ''} for d, dy, n in DEPT_DATA],
+        'dept_data': [{'Department': d, 'Day': '', 'Night': ''} for d, dy, n in DEPT_DATA],
     }
 
     return jsonify(summary)
