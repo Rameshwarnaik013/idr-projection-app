@@ -88,6 +88,10 @@ ROASTING_LOOKUP = {
 
 FFS_METHODS = {'Pace - FFS', 'Perfect - FFS'}
 
+PACKAGING_OVERRIDES = {
+    'Dark Choco-Orange Date Bite Farmley Tin Jar 200g': {'Packaging Type': 'Pouch', 'Packaging Method': 'FW'},
+}
+
 
 def process_files(this_month_file, lookup_file, cf_value, working_days):
     xls = pd.ExcelFile(this_month_file, engine='openpyxl')
@@ -114,6 +118,8 @@ def process_files(this_month_file, lookup_file, cf_value, working_days):
                     'Packaging Type': str(row.get('Packaging Type', '')).strip(),
                     'Packaging Method': str(row.get('Packaging Method', '')).strip()
                 }
+
+    lookup.update(PACKAGING_OVERRIDES)
 
     idr_rows = []
     for _, row in df_proj.iterrows():
