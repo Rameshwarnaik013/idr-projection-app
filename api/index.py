@@ -90,7 +90,15 @@ FFS_METHODS = {'Pace - FFS', 'Perfect - FFS'}
 
 
 def process_files(this_month_file, lookup_file, cf_value, working_days):
-    df_proj = pd.read_excel(this_month_file, sheet_name='Projection', engine='openpyxl')
+    xls = pd.ExcelFile(this_month_file, engine='openpyxl')
+    proj_sheet = None
+    for name in ['Projection', 'Query Report']:
+        if name in xls.sheet_names:
+            proj_sheet = name
+            break
+    if proj_sheet is None:
+        proj_sheet = xls.sheet_names[0]
+    df_proj = pd.read_excel(xls, sheet_name=proj_sheet)
     df_proj.columns = [c.strip() for c in df_proj.columns]
 
     lookup_file.seek(0)
